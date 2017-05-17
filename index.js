@@ -2,7 +2,7 @@ var express = require('express');
 var path = require('path');
 var bodyParser = require('body-parser');
 
-// var command = require('./routes/command.js');
+/// var command = require('./routes/command.js');
 
 var PORT = process.env.PORT || 5000;
 
