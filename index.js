@@ -2,7 +2,7 @@ var express = require('express');
 var path = require('path');
 var bodyParser = require('body-parser');
 
-var command = require('./routes/command.js');
+// var command = require('./routes/command.js');
 
 var PORT = process.env.PORT || 5000;
 
@@ -23,7 +23,7 @@ app.all('*', function(req, res, next) {
 });
 
 app.get('/', function(req, res) {
-  res.send('Hello this is Bob');
+  res.send('Hello, this is Bob');
 });
 
 // Router
