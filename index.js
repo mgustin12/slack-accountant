@@ -1,12 +1,10 @@
-require('dotenv').config();
-
 var express = require('express');
 var path = require('path');
 var bodyParser = require('body-parser');
 
 var command = require('./routes/command.js');
 
-var PORT = 5000;
+var PORT = process.env.PORT || 5000;
 
 var app = express();
 
