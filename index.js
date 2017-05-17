@@ -26,10 +26,10 @@ app.all('*', function(req, res, next) {
 
 app.get('/', function(req, res) {
   res.send('Hello this is Bob');
-})
+});
 
 // Router
-app.use('/command', command);
+// app.use('/command', command);
 
 app.listen(PORT, function() {
 	console.log('Server started on port: '+PORT);
