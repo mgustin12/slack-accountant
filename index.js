@@ -1,8 +1,10 @@
+require('dotenv').config();
+
 var express = require('express');
 var path = require('path');
 var bodyParser = require('body-parser');
 
-/// var command = require('./routes/command.js');
+var command = require('./routes/command.js');
 
 var PORT = process.env.PORT || 5000;
 
@@ -27,7 +29,7 @@ app.get('/', function(req, res) {
 });
 
 // Router
-// app.use('/command', command);
+app.use('/command', command);
 
 app.listen(PORT, function() {
 	console.log('Server started on port: '+PORT);
