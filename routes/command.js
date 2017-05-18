@@ -44,6 +44,7 @@ function updateCategory(channel, update, res) {
 }
 
 router.post('/', function(req, res) {
+	console.log(req.body);
 	var cmd = req.body.text.match(/([^:]+):(.*)/);
 	var channel = req.body.channel;
 	var text = req.body.text;
