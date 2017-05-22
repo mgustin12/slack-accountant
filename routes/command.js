@@ -22,9 +22,9 @@ function sendMessage(channel, message) {
 	};
 }
 
-function updateCategory(channel, update, res) {
+function updateCategory(channel, update, msg, res) {
 	if(update) {
-		console.log(update);
+		console.log('Update', update);
 		db.users.findAndModify({
 			query: { channel: channel },
 			update: { $set: update }
@@ -33,9 +33,9 @@ function updateCategory(channel, update, res) {
 				console.error(err);
 			}
 			if(user) {
-				res.send('Updated user');
+				res.send(msg);
 			} else {
-				res.send('No user found');
+				res.send('No user found for channel ' + channel);
 			}
 		});
 	} else {
@@ -44,7 +44,7 @@ function updateCategory(channel, update, res) {
 }
 
 router.post('/', function(req, res) {
-	console.log(req.body);
+	console.log('Request', req.body);
 	var cmd = req.body.text.match(/([^:]+):(.*)/);
 	var channel = req.body.channel_id;
 	var text = req.body.text;
@@ -56,6 +56,7 @@ router.post('/', function(req, res) {
 		'\n\t report \n\t\t Displays current budget stats' +
 		'\n\t remove: [category] \n\t\t Removes expense category' +
 		'\n\t add: [category] \n\t\t Adds expense category' +
+		'\n\t set [category]: [budget] \n\t\t Sets category budget' +
 		'\n\t [category]: [amount] \n\t\t Charge expense amount to category'
 	);
 
@@ -80,7 +81,7 @@ router.post('/', function(req, res) {
 							var categoryCurrent = user.categories[category].current;
 							var percent = Math.round((categoryCurrent / categoryTotal) * 100);
 
-							total = total + categoryTotal;
+							total = total + parseInt(categoryTotal);
 							current = current + categoryCurrent;
 							categoryReport.push('\n\t ' + category + ': ' + categoryCurrent + '/' + categoryTotal + ' | ' + percent + '%');
 						}
@@ -94,6 +95,8 @@ router.post('/', function(req, res) {
 						);
 
 						res.send(report);
+					} else {
+						res.send('No user found for channel ' + channel);
 					}
 				});
 				break;
@@ -105,56 +108,111 @@ router.post('/', function(req, res) {
 		type = cmd[1].trim().split(' ');
 		value = cmd[2].trim();
 
-		if(type == 'add') {
-			db.users.findOne({ channel: channel }, function(err, user) {
-				if(err) {
-					console.error(err);
-				}
-				if(user) {
-					var categories = user.categories;
-					categories[value] = {
-						budget: 0,
-						current: 0
-					};
-
-					update = {};
-					update['categories'] = categories;
-					updateCategory(channel, update, res);
-				}
-			});
-		} else if(type == 'remove') {
-			db.users.findOne({ channel: channel }, function(err, user) {
-				if(err) {
-					console.error(err);
-				}
-				if(user) {
-					var categories = user.categories;
-					delete categories[value];
-
-					update = {};
-					update['categories'] = categories;
-					updateCategory(channel, update, res);
-				}
-			});
-		} else {
-			db.users.findOne({ channel: channel }, function(err, user) {
-				if(err) {
-					console.error(err);
-				}
-				if(user) {
-					if(type in user.categories) {
-						var newValue = user.categories[type].current - value;
-						console.log(type[0], newValue);
-						update = {};
-						update['categories.' + type[0] + '.current'] = newValue;
-						updateCategory(channel, update, res);
-					} else {
-						res.send('Did not find a category: ' + type + '. To add a category enter `/bob add: [category]`');
+		switch(type[0]) {
+			case 'add':
+				db.users.findOne({ channel: channel }, function(err, user) {
+					if(err) {
+						console.error(err);
 					}
-				} else {
-					res.send('Did not find user');
-				}
-			});
+					if(user) {
+						var msg = 'Added category: ' + type;
+						var categories = user.categories;
+						categories[value] = {
+							budget: 0,
+							current: 0
+						};
+
+						update = {};
+						update['categories'] = categories;
+						updateCategory(channel, update, msg, res);
+					} else {
+						res.send('No user found for channel ' + channel);
+					}
+				});
+				break;
+			case 'remove':
+				db.users.findOne({ channel: channel }, function(err, user) {
+					if(err) {
+						console.error(err);
+					}
+					if(user) {
+						var msg = 'Removed category: ' + value;
+						var categories = user.categories;
+						delete categories[value];
+
+						update = {};
+						update['categories'] = categories;
+						updateCategory(channel, update, msg, res);
+					} else {
+						res.send('No user found for channel ' + channel);
+					}
+				});
+				break;
+			case 'set':
+				db.users.findOne({ channel: channel }, function(err, user) {
+					if(err) {
+						console.error(err);
+					}
+					if(user) {
+						if(type[1] in user.categories) {
+							var category = user.categories[type[1]];
+							var percent = Math.round((category.current / value) * 100);
+							var msg = type[1] + ': ' + category.current + '/' + value + ' | ' + percent + '%';
+
+							update = {};
+							update['categories.' + type[1] + '.budget'] = value;
+							updateCategory(channel, update, msg, res);
+						} else {
+							res.send('Did not find a category: ' + type[1] + '. To add a category enter `/bob add: [category]`');
+						}
+					} else {
+						res.send('No user found for channel ' + channel);
+					}
+				});
+				break;
+			case 'report':
+				db.users.findOne({ channel: channel }, function(err, user) {
+					if(err) {
+						console.error(err);
+					}
+					if(user) {
+						if(type[1] in user.categories) {
+							var category = user.categories[type[1]];
+							var percent = Math.round((category.current / category.budget) * 100);
+							var msg = type[1] + ': ' + category.current + '/' + category.budget + ' | ' + percent + '%';
+							
+							res.send(msg);
+						} else {
+							res.send('Did not find a category: ' + type[1] + '. To add a category enter `/bob add: [category]`');
+						}
+					} else {
+						res.send('No user found for channel ' + channel);
+					}
+				});
+				break;
+			default:
+				db.users.findOne({ channel: channel }, function(err, user) {
+					if(err) {
+						console.error(err);
+					}
+					if(user) {
+						if(type in user.categories) {
+							var category = user.categories[type];
+							var newValue = category.current - value;
+							var percent = Math.round((newValue / category.budget) * 100);
+							var msg = type[0] + ': ' + newValue + '/' + category.budget + ' | ' + percent + '%';
+
+							update = {};
+							update['categories.' + type[0] + '.current'] = newValue;
+							updateCategory(channel, update, msg, res);
+						} else {
+							res.send('Did not find a category: ' + type[0] + '. To add a category enter `/bob add: [category]`');
+						}
+					} else {
+						res.send('No user found for channel ' + channel);
+					}
+				});
+				break;
 		}
 	}
 });
