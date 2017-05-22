@@ -57,6 +57,8 @@ router.post('/', function(req, res) {
 		'\n\t remove: [category] \n\t\t Removes expense category' +
 		'\n\t add: [category] \n\t\t Adds expense category' +
 		'\n\t set [category]: [budget] \n\t\t Sets category budget' +
+		'\n\t reset: all \n\t\t Resets all category current values' +
+		'\n\t reset: [category] \n\t\t Resets category current value' +
 		'\n\t [category]: [amount] \n\t\t Charge expense amount to category'
 	);
 
@@ -115,7 +117,7 @@ router.post('/', function(req, res) {
 						console.error(err);
 					}
 					if(user) {
-						var msg = 'Added category: ' + type;
+						var msg = 'Added category: ' + value;
 						var categories = user.categories;
 						categories[value] = {
 							budget: 0,
@@ -170,6 +172,39 @@ router.post('/', function(req, res) {
 					}
 				});
 				break;
+			case 'reset':
+				db.users.findOne({ channel: channel }, function(err, user) {
+					if(err) {
+						console.error(err);
+					}
+					if(user) {
+						if(value == 'all') {
+							var msg = 'Reset all categories to 0%';
+							var categories = user.categories;
+
+							for(var category in categories) {
+								categories[category].current = 0;
+							}
+
+							update = {};
+							update['categories'] = categories;
+							updateCategory(channel, update, msg, res);
+						} else {
+							if(value in user.categories) {
+								var msg = 'Reset ' + value + ' to 0';
+
+								update = {};
+								update['categories.' + value + '.current'] = 0;
+								updateCategory(channel, update, msg, res);
+							} else {
+								res.send('Did not find a category: ' + value + '. To add a category enter `/bob add: [category]`');
+							}
+						}
+					} else {
+						res.send('No user found for channel ' + channel);
+					}
+				});
+				break;
 			case 'report':
 				db.users.findOne({ channel: channel }, function(err, user) {
 					if(err) {
@@ -198,7 +233,7 @@ router.post('/', function(req, res) {
 					if(user) {
 						if(type in user.categories) {
 							var category = user.categories[type];
-							var newValue = category.current - value;
+							var newValue = parseInt(category.current) + parseInt(value);
 							var percent = Math.round((newValue / category.budget) * 100);
 							var msg = type[0] + ': ' + newValue + '/' + category.budget + ' | ' + percent + '%';
 
